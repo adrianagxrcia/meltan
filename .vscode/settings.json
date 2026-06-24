@@ -1,22 +1,13 @@
 {
-  "C_Cpp.intelliSenseEngine": "default",
-  "idf.extensionActivationMode": "always",
+  "idf.currentSetup": "C:\\esp\\v5.3.5\\esp-idf",
+  "idf.portWin": "COM11",
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
-  "idf.portWin": "COM11",
-  "idf.currentSetup": "d:\\ProgramFiles\\VSCode\\ESP-IDF\\esp\\v5.5.1\\esp-idf",
   "idf.customExtraVars": {
-    "OPENOCD_SCRIPTS": "C:\\Users\\Adriana\\.espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20251215/openocd-esp32/share/openocd/scripts",
+    "OPENOCD_SCRIPTS": "C:\\Users\\Adriana\\.espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
     "IDF_CCACHE_ENABLE": "1",
     "ESP_ROM_ELF_DIR": "C:\\Users\\Adriana\\.espressif\\tools\\esp-rom-elfs\\20230320/",
     "IDF_TARGET": "esp32s3"
-  },
-  "idf.flashType": "JTAG",
-  "clangd.path": "C:\\Espressif\\tools\\esp-clang\\16.0.1-fe4f10a809\\esp-clang\\bin\\clangd.exe",
-  "clangd.arguments": [
-    "--background-index",
-    "--query-driver=**",
-    "--compile-commands-dir=c:\\Users\\Adriana\\Desktop\\yo\\.TELECO\\TFG\\code\\meltanMain\\build"
-  ]
+  }
 }

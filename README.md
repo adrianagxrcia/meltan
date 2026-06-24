@@ -1,35 +1,68 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- |
+# meltanMain — Firmware del nodo central
 
-# _Sample project_
+Firmware del nodo central del sistema de control de una caja de condicionamiento
+operante, desarrollado como Trabajo de Fin de Grado en la ETSIT (Universidad
+Politécnica de Madrid), dentro del proyecto VISNE del laboratorio B105.
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+El nodo central se ejecuta sobre un **ESP32-S3-WROOM-1-N8R2**. Se comunica con una
+Raspberry Pi 4 mediante **BLE** (NimBLE) y con los módulos periféricos ESP32-C3
+mediante **ESP-NOW**.
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
-
-
-
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
+## Estructura del repositorio
 
 ```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
+meltanMain/
+├── CMakeLists.txt        Proyecto raíz del programa de control
+├── sdkconfig.defaults    Configuración base (NimBLE, consola)
+├── components/           Módulos compartidos (un componente por integrado)
+│   ├── ledRGB/           ledRGB.c + include/ledRGB.h + CMakeLists.txt
+│   ├── motor/
+│   ├── palanca/
+│   ├── altavoz/
+│   └── comunicacion/     BLE (NimBLE) y ESP-NOW
+├── main/                 Programa de control (usa los componentes)
+│   ├── main.c
+│   └── CMakeLists.txt
+└── tests/                Un proyecto ESP-IDF independiente por test
+    ├── testRGB/          testMotor/, testPalanca/, testAltavoz/ ...
+    ├── testSistema/      Prueba conjunta de todo el sistema
+    └── queMAC/           Utilidad: lee la dirección MAC del módulo por serie
 ```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+
+Los módulos viven en `components/`, de modo que el programa de control y los tests
+usan el mismo código sin duplicarlo. Cada test es un proyecto independiente que
+toma los módulos de `components/` mediante `EXTRA_COMPONENT_DIRS` en su
+`CMakeLists.txt` raíz.
+
+## Requisitos
+
+- ESP-IDF v5.3.5 (target `esp32s3`)
+- Toolchain de Espressif instalado y la variable `IDF_PATH` definida
+
+## Compilación y carga del programa de control
+
+Desde la raíz del proyecto:
+
+```bash
+idf.py set-target esp32s3
+idf.py build
+idf.py -p PUERTO flash monitor
+```
+
+## Ejecución de un test
+
+Cada test se compila y se carga por separado. Por ejemplo, para el test del motor:
+
+```bash
+cd tests/testMotor
+idf.py build flash monitor
+```
+
+La configuración de NimBLE y de la consola se aplica automáticamente desde el
+`sdkconfig.defaults` de cada proyecto. El archivo `sdkconfig` no se versiona
+porque ESP-IDF lo genera en la primera compilación.
+
+## Documentación
+
+Las cabeceras de los módulos (`components/<modulo>/include/`) están documentadas
+con Doxygen para facilitar la comprensión y la reutilización del código.
