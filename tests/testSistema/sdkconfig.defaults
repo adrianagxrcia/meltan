@@ -1,0 +1,7 @@
+# Configuración mínima para NimBLE en ESP32-S3
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+
+# Consola por USB-JTAG y UART (para alternar métodos de flasheo)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_UART=y
