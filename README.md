@@ -10,12 +10,7 @@ mediante **ESP-NOW**.
 
 ## Documentación del código
 
-La documentación generada con Doxygen, con todos los comentarios de las cabeceras,
-está publicada en:
-
 **https://adrianagxrcia.github.io/meltan/**
-
-La web se regenera de forma automática en cada actualización del repositorio.
 
 ## Estructura del repositorio
 
