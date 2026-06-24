@@ -1,0 +1,33 @@
+# Doxyfile para el firmware del nodo central (meltan)
+# Genera la documentacion HTML a partir de las cabeceras de components/.
+
+# --- Proyecto ---
+PROJECT_NAME           = "meltan - Nodo central"
+PROJECT_BRIEF          = "Firmware del nodo central de la caja de condicionamiento operante"
+OUTPUT_DIRECTORY       = docs
+OUTPUT_LANGUAGE        = Spanish
+
+# --- Que se documenta ---
+# Solo las cabeceras de los modulos, que son las que llevan Doxygen.
+INPUT                  = components
+FILE_PATTERNS          = *.h
+RECURSIVE              = YES
+
+# --- Comportamiento ---
+# Extrae todo aunque algun elemento no tenga comentario.
+EXTRACT_ALL            = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+JAVADOC_AUTOBRIEF      = YES
+
+# Muestra el codigo fuente de las cabeceras enlazado desde la doc.
+SOURCE_BROWSER         = YES
+
+# --- Salida ---
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+HTML_OUTPUT            = html
+
+# Diagramas de llamadas/colaboracion si graphviz esta disponible.
+HAVE_DOT               = NO
+
+QUIET                  = YES
