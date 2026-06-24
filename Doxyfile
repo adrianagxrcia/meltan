@@ -1,5 +1,5 @@
 # Doxyfile para el firmware del nodo central (meltan)
-# Genera la documentacion HTML a partir de las cabeceras de components/.
+# Genera la documentacion HTML a partir del codigo de components/.
 
 # --- Proyecto ---
 PROJECT_NAME           = "meltan - Nodo central"
@@ -8,26 +8,43 @@ OUTPUT_DIRECTORY       = docs
 OUTPUT_LANGUAGE        = Spanish
 
 # --- Que se documenta ---
-# Solo las cabeceras de los modulos, que son las que llevan Doxygen.
-INPUT                  = components
-FILE_PATTERNS          = *.h
+# Cabeceras (.h) con los comentarios Doxygen e implementaciones (.c)
+# para poder navegar donde se usa cada funcion.
+INPUT                  = README.md components
+FILE_PATTERNS          = *.h *.c
 RECURSIVE              = YES
+
+# Usa el README como pagina principal de la documentacion.
+USE_MDFILE_AS_MAINPAGE = README.md
 
 # --- Comportamiento ---
 # Extrae todo aunque algun elemento no tenga comentario.
 EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
 OPTIMIZE_OUTPUT_FOR_C  = YES
 JAVADOC_AUTOBRIEF      = YES
 
-# Muestra el codigo fuente de las cabeceras enlazado desde la doc.
+# Muestra el codigo fuente enlazado y las referencias cruzadas.
 SOURCE_BROWSER         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+REFERENCES_LINK_SOURCE = YES
 
-# --- Salida ---
+# --- Salida HTML ---
 GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
 HTML_OUTPUT            = html
 
-# Diagramas de llamadas/colaboracion si graphviz esta disponible.
+# Boton para alternar tema claro/oscuro en la web.
+HTML_COLORSTYLE        = TOGGLE
+
+# Panel lateral de navegacion (el arbol de la izquierda).
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+TREEVIEW_WIDTH         = 280
+
+# Diagramas si graphviz esta disponible.
 HAVE_DOT               = NO
 
 QUIET                  = YES
