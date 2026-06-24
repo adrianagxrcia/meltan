@@ -13,7 +13,7 @@ mediante **ESP-NOW**.
 **https://adrianagxrcia.github.io/meltan/**
 
 ## Estructura del repositorio
-
+ 
 ```
 meltan/
 ├── CMakeLists.txt        Proyecto raíz del programa de control
