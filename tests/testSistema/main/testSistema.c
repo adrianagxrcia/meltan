@@ -49,12 +49,9 @@ static const char *TAG = "test_sistema";
 
 // ─── Parámetros del experimento ───────────────────────────────────────────────
 #define VENTANA_PALANCA_MS   10000  // Duración de la ventana de palanca (10 s)
-#define RECOMPENSA_PASOS     50    // Pasos del motor al dar recompensa
+#define RECOMPENSA_PASOS     50     // Pasos del motor al dar recompensa
 #define RECOMPENSA_DELAY_MS  10     // Tiempo entre pasos del motor. 10ms = 1 tick
-                                    // limpio a 100Hz (pdMS_TO_TICKS(5) se
-                                    // redondeaba a 0 y el motor no cedia CPU
-                                    // ni daba tiempo al driver a fijar corriente)
-#define TONO_FREQ_HZ         880    // Tono agradable (La5)
+#define TONO_FREQ_HZ         880    // Tono La5
 #define TONO_DURACION_MS     300    // Duración del tono de recompensa
 
 // ─── Protocolo ESP-NOW con el ESP32-C3 ────────────────────────────────────────
@@ -81,10 +78,7 @@ static QueueHandle_t s_experimento_queue = NULL;
 static SemaphoreHandle_t s_c3_confirm = NULL;
 
 // ─── Callback de la palanca (contexto ISR) ────────────────────────────────────
-// Según palanca.h, aquí solo se permite xQueueSendFromISR. Posteamos el evento
-// y dejamos que la tarea del experimento lo procese.
 static void _palanca_cb(bool pressed) {
-    // Solo nos interesa el flanco de pulsación, no la liberación.
     if (pressed) {
         BaseType_t hp_task_woken = pdFALSE;
         bool ev = true;
@@ -111,12 +105,7 @@ static void _espnow_recv_cb(const esp_now_recv_info_t *info,
 }
 
 // ─── Callback BLE (contexto de la tarea del host NimBLE) ───────────────────────
-// Se invoca con cada comando recibido de la Raspberry Pi. No ejecutamos el
-// experimento aquí: posteamos a la cola para no bloquear el stack BLE.
 static void _ble_cmd_cb(const meltan_cmd_t *cmd) {
-    // En este test la Raspberry Pi envía texto; el primer byte de payload
-    // identifica el comando. Comparamos contra "EXPERIMENTO_ON".
-    // (comunicacion.c copia los bytes crudos recibidos en la struct.)
     const char *texto = (const char *)cmd;
     ESP_LOGI(TAG, "Comando BLE recibido");
 
@@ -132,7 +121,6 @@ static void _ble_cmd_cb(const meltan_cmd_t *cmd) {
 static void _tarea_altavoz(void *param) {
     altavozEnable(1);
     altavozToneI2S(TONO_FREQ_HZ, TONO_DURACION_MS);
-    // altavozToneI2S ya hace el shutdown del amplificador al terminar.
     vTaskDelete(NULL);
 }
 
@@ -140,21 +128,15 @@ static void _tarea_altavoz(void *param) {
 static void _dar_recompensa(void) {
     ESP_LOGI(TAG, "Recompensa: motor + tono simultaneos");
 
-    // Lanzamos el altavoz en una tarea aparte para que suene a la vez que
-    // se mueve el motor.
-    // Prioridad 6, por encima del motor (que corre en esta tarea a prioridad 5).
-    // El audio tiene deadlines duros: si su buffer I2S se vacia, el tono
-    // chasquea. El motor no tiene esa urgencia, cede CPU cada paso.
+    // Lanzamos el altavoz en una tarea aparte para que suene a la vez que se mueve el motor.
     xTaskCreate(_tarea_altavoz, "altavoz", 4096, NULL, 6, NULL);
 
-    // El motor gira en esta misma tarea. Mientras, el tono ya está sonando.
     motorEnable();
     motorStep(RECOMPENSA_PASOS, MOTOR_DIR_FORWARD, RECOMPENSA_DELAY_MS);
     motorDisable();
 }
 
 // ─── Tarea principal del experimento ──────────────────────────────────────────
-// Espera comandos en la cola y ejecuta el flujo completo de una sesión.
 static void _tarea_experimento(void *param) {
     uint8_t ev;
 
@@ -164,12 +146,12 @@ static void _tarea_experimento(void *param) {
             continue;
         }
 
-        // Paso 1: comando recibido -> LED verde un instante y aviso a la Raspi.
+        // Comando recibido -> LED verde un instante y aviso a la Raspi.
         ledRGBset(LED_COLOR_GREEN);
         ble_notify_status((const uint8_t *)"RECIBIDO", 8);
         vTaskDelay(pdMS_TO_TICKS(500));
 
-        // Paso 2: ordenar la estrella al C3 por ESP-NOW.
+        // Ordenar la estrella al C3 por ESP-NOW.
         meltan_cmd_t orden = {0};
         orden.cmd = CMD_ESTRELLA;
         orden.payload_len = 0;
@@ -186,7 +168,7 @@ static void _tarea_experimento(void *param) {
             continue;
         }
 
-        // Paso 3: esperar la confirmación del C3 (máx. 2 s).
+        // Esperar la confirmación del C3 (máx. 2 s).
         if (xSemaphoreTake(s_c3_confirm, pdMS_TO_TICKS(2000)) != pdTRUE) {
             ESP_LOGE(TAG, "El C3 no confirmo a tiempo");
             ledRGBset(LED_COLOR_RED);
@@ -196,8 +178,8 @@ static void _tarea_experimento(void *param) {
             continue;
         }
 
-        // Paso 4: experimento en curso -> LED amarillo y ventana de palanca.
-        ledRGBset(LED_COLOR_YELLOW);
+        // Experimento en curso -> LED amarillo y ventana de palanca.
+        ledRGBset(LED_COLOR_WHITE);
         ble_notify_status((const uint8_t *)"EN_CURSO", 8);
 
         // Vaciamos pulsaciones previas que pudieran haber quedado en la cola.
@@ -205,21 +187,18 @@ static void _tarea_experimento(void *param) {
 
         // Esperamos una pulsación durante la ventana de 10 s.
         bool pulsada;
-        bool exito = (xQueueReceive(s_palanca_queue, &pulsada,
-                                    pdMS_TO_TICKS(VENTANA_PALANCA_MS)) == pdTRUE);
+        bool exito = (xQueueReceive(s_palanca_queue, &pulsada, pdMS_TO_TICKS(VENTANA_PALANCA_MS)) == pdTRUE);
 
         if (exito) {
-            // Paso 5a: recompensa (motor + tono simultáneos).
             ESP_LOGI(TAG, "Palanca pulsada dentro de la ventana");
             ble_notify_status((const uint8_t *)"RECOMPENSA", 10);
             _dar_recompensa();
         } else {
-            // Paso 5b: se agotó la ventana sin pulsar.
             ESP_LOGI(TAG, "Ventana agotada sin pulsacion");
             ble_notify_status((const uint8_t *)"SIN_PULSAR", 10);
         }
 
-        // Paso 6: vuelta a reposo.
+        // Vuelta a reposo.
         ledRGBset(LED_COLOR_BLUE);
         ESP_LOGI(TAG, "Sesion terminada. En reposo.");
     }
@@ -238,14 +217,12 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    // Event loop por defecto: el driver WiFi (que ESP-NOW levanta por debajo)
-    // postea aquí sus eventos internos. Sin este loop, esos posts fallan con
-    // "failed to post WiFi event ... ret=259" y ESP-NOW deja de entregar.
-    // En el test ESP-NOW en solitario no se notaba; al convivir con BLE y el
-    // resto de subsistemas se vuelve obligatorio crearlo de forma explícita.
+    // Event loop por defecto: el driver WiFi postea aquí sus eventos internos. 
+    // Sin este loop, esos posts fallan con "failed to post WiFi event ... ret=259" 
+    // y ESP-NOW deja de entregar.
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    // Colas y semáforo de sincronización.
+    // Colas y sincronización.
     s_palanca_queue     = xQueueCreate(4, sizeof(bool));
     s_experimento_queue = xQueueCreate(4, sizeof(uint8_t));
     s_c3_confirm        = xSemaphoreCreateBinary();
@@ -256,11 +233,11 @@ void app_main(void) {
     altavozInit();
     palancaInit(_palanca_cb);   // modo interrupción
 
-    // Comunicaciones: ESP-NOW primero (arranca WiFi), luego BLE.
+    // Comunicaciones: ESP-NOW primero, luego BLE.
     espnow_init();
     espnow_register_peer(MODULE_LED_MATRIX, s_c3_mac);
 
-    // Registramos nuestro callback de recepción ESP-NOW para oír el CMD_OK.
+    // Registramos nuestro callback de recepción ESP-NOW para oír el CMD_OK
     esp_now_register_recv_cb(_espnow_recv_cb);
 
     // BLE: registra el callback de comandos y arranca el advertising.
