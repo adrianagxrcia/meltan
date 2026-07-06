@@ -124,7 +124,27 @@ motor_status_t motorStep(uint32_t steps, motor_dir_t dir, uint32_t delay_ms) {
         table = stepBWD;
     }
 
+    // Ignoramos nFAULT durante los primeros 50ms tras arrancar el movimiento.
+    // El DRV8424EPWPR recien salido de sleep puede dar falsos positivos
+    // mientras se estabilizan los puentes internos. motorEnable() ya espera
+    // 2ms, pero el datasheet solo garantiza puentes operativos, no nFAULT
+    // limpio de transitorios; 50ms es un colchon empirico.
+    TickType_t arranque = xTaskGetTickCount();
+    uint32_t ignorar_ms = 50;
+
     for (uint32_t i = 0; i < steps; i++) {
+        bool estabilizado = (xTaskGetTickCount() - arranque) >= pdMS_TO_TICKS(ignorar_ms);
+
+        // Solo miramos el fallo pasado el margen de estabilizacion.
+        if (estabilizado && motorGetFault() == MOTOR_FAULT) {
+            // Cortamos corriente a ambas bobinas antes de abortar, para no
+            // dejar el motor energizado en una posicion arbitraria.
+            gpio_set_level(PIN_AEN, 0);
+            gpio_set_level(PIN_BEN, 0);
+            printf("[motor] FAULT en paso %lu de %lu. Abortando.\n", i, steps);
+            return MOTOR_FAULT;
+        }
+
         _applyStep(table, s_stepIndex);
         s_stepIndex = (s_stepIndex + 1) % 4;
         vTaskDelay(pdMS_TO_TICKS(delay_ms));

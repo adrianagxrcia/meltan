@@ -49,10 +49,13 @@ static const char *TAG = "test_sistema";
 
 // ─── Parámetros del experimento ───────────────────────────────────────────────
 #define VENTANA_PALANCA_MS   10000  // Duración de la ventana de palanca (10 s)
-#define RECOMPENSA_PASOS     200    // Pasos del motor al dar recompensa
-#define RECOMPENSA_DELAY_MS  5      // Tiempo entre pasos del motor
+#define RECOMPENSA_PASOS     50    // Pasos del motor al dar recompensa
+#define RECOMPENSA_DELAY_MS  10     // Tiempo entre pasos del motor. 10ms = 1 tick
+                                    // limpio a 100Hz (pdMS_TO_TICKS(5) se
+                                    // redondeaba a 0 y el motor no cedia CPU
+                                    // ni daba tiempo al driver a fijar corriente)
 #define TONO_FREQ_HZ         880    // Tono agradable (La5)
-#define TONO_DURACION_MS     600    // Duración del tono de recompensa
+#define TONO_DURACION_MS     300    // Duración del tono de recompensa
 
 // ─── Protocolo ESP-NOW con el ESP32-C3 ────────────────────────────────────────
 // Mismos códigos que el test ESP-NOW ya validado.
@@ -139,7 +142,10 @@ static void _dar_recompensa(void) {
 
     // Lanzamos el altavoz en una tarea aparte para que suene a la vez que
     // se mueve el motor.
-    xTaskCreate(_tarea_altavoz, "altavoz", 4096, NULL, 5, NULL);
+    // Prioridad 6, por encima del motor (que corre en esta tarea a prioridad 5).
+    // El audio tiene deadlines duros: si su buffer I2S se vacia, el tono
+    // chasquea. El motor no tiene esa urgencia, cede CPU cada paso.
+    xTaskCreate(_tarea_altavoz, "altavoz", 4096, NULL, 6, NULL);
 
     // El motor gira en esta misma tarea. Mientras, el tono ya está sonando.
     motorEnable();
